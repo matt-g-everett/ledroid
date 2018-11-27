@@ -1,4 +1,4 @@
-package com.matteverett.caled;
+package com.matteverett.ledroid;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.matteverett.caled", appContext.getPackageName());
+        assertEquals("com.matteverett.ledroid", appContext.getPackageName());
     }
 }

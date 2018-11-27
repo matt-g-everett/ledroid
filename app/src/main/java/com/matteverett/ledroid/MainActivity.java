@@ -1,4 +1,4 @@
-package com.matteverett.caled;
+package com.matteverett.ledroid;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -40,7 +40,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity
         implements CameraBridgeViewBase.CvCameraViewListener2 {
 
-    private static final String TAG = "caled::MainActivity";
+    private static final String TAG = "ledroid::MainActivity";
 
     private CameraBridgeViewBase mOpenCvCameraView;
 

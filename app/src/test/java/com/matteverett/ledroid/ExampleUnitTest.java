@@ -1,4 +1,4 @@
-package com.matteverett.caled;
+package com.matteverett.ledroid;
 
 import org.junit.Test;
 
