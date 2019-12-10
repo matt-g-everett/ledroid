@@ -8,7 +8,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
@@ -16,20 +15,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 
-import org.opencv.android.JavaCameraView;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Scalar;
-import org.opencv.features2d.FastFeatureDetector;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
@@ -43,13 +37,8 @@ public class MainActivity extends AppCompatActivity
     private static final String TAG = "ledroid::MainActivity";
 
     private CameraBridgeViewBase mOpenCvCameraView;
-
-    // Used in Camera selection from menu (when implemented)
-    private boolean              mIsJavaCamera = true;
-    private MenuItem             mItemSwitchCamera = null;
-
-    Mat mRgba;
-    List<Point> mLocations;
+    private Calibrate mCalibrate;
+    private Mat mRgba;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -75,44 +64,14 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
-        //Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        //setSupportActionBar(toolbar);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                double maximumY = Double.MIN_VALUE;
-                double minimumY = Double.MAX_VALUE;
-                double minimumX = Double.MAX_VALUE;
-                String locs = "";
-                for (int i = 0; i < mLocations.size(); i++) {
-                    Point pt = mLocations.get(i);
-                    maximumY = Math.max(maximumY, pt.y);
-                    minimumY = Math.min(minimumY, pt.y);
-                    minimumX = Math.min(minimumX, pt.x);
-                    locs += "(" + (int)Math.round(pt.x) + ", " + (int)Math.round(pt.y) + ") ";
-                }
-
-                double scale = 1.0 / (maximumY - minimumY);
-
-                Log.i(TAG, "***Locations: " + locs);
-                Log.i(TAG, "***Scale: " + scale);
-
-                locs = "";
-                List<Point> scaled = new ArrayList<>();
-                for (int i = 0; i < mLocations.size(); i++) {
-                    Point pt = mLocations.get(i);
-                    Point scaledPt = new Point((pt.x - minimumX) * scale, (pt.y - minimumY) * scale);
-                    scaled.add(scaledPt);
-                    locs += "(" + (int)Math.round(scaledPt.x) + ", " + (int)Math.round(scaledPt.y) + ") ";
-                }
-                Log.i(TAG, "***Scaled locations: " + scaled);
-
-                Snackbar.make(view, "Locations stored", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                mCalibrate.StartCalibration();
             }
         });
 
@@ -135,13 +94,14 @@ public class MainActivity extends AppCompatActivity
         }
 
         Log.i(TAG, "called onCreate");
-        //super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        // setContentView(R.layout.content_main);
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.camera_view);
         mOpenCvCameraView.setCameraPermissionGranted();
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
+
+        mCalibrate = new Calibrate();
+        mCalibrate.Init(getApplicationContext());
     }
 
     @Override
@@ -180,7 +140,7 @@ public class MainActivity extends AppCompatActivity
         super.onResume();
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION /*.OPENCV_VERSION_3_0_0*/, this, mLoaderCallback);
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, mLoaderCallback);
         } else {
             Log.d(TAG, "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
@@ -236,14 +196,16 @@ public class MainActivity extends AppCompatActivity
         Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_TREE,
                 Imgproc.CHAIN_APPROX_SIMPLE);
 
-        mLocations = new ArrayList<>();
+        List<Point> locations = new ArrayList<>();
         for (int i = 0; i < contours.size(); i++) {
             Moments m = Imgproc.moments(contours.get(i));
             Point centroid = new Point(m.m10 / m.m00, m.m01 / m.m00);
-            mLocations.add(centroid);
+            locations.add(centroid);
             Imgproc.drawContours(mRgba, contours, i, new Scalar(255, 0, 255), 2);
             Imgproc.drawMarker(mRgba, centroid, new Scalar(0, 0, 255), Imgproc.MARKER_CROSS, 20, 3);
         }
+
+        mCalibrate.StoreLocations(locations);
 
         return mRgba;
     }
