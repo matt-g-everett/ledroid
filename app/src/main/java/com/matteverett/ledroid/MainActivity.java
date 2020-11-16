@@ -15,6 +15,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 
+import com.kviation.sample.orientation.Orientation;
+
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
@@ -32,12 +34,14 @@ import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity
-        implements CameraBridgeViewBase.CvCameraViewListener2 {
+        implements CameraBridgeViewBase.CvCameraViewListener2, Orientation.Listener {
 
     private static final String TAG = "ledroid::MainActivity";
 
     private CameraBridgeViewBase mOpenCvCameraView;
     private Calibrate mCalibrate;
+    private float mAzimuth;
+    private Orientation mOrientation;
     private Mat mRgba;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -64,6 +68,9 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Create the orientation watcher
+        mOrientation = new Orientation(this);
 
         setContentView(R.layout.activity_main);
 
@@ -205,8 +212,30 @@ public class MainActivity extends AppCompatActivity
             Imgproc.drawMarker(mRgba, centroid, new Scalar(0, 0, 255), Imgproc.MARKER_CROSS, 20, 3);
         }
 
+        ArrayList<MatOfPoint> pts = new ArrayList<>();
+        pts.add(new MatOfPoint(new Point(0, 0), new Point(50, 0), new Point(50, 50)));
+        Imgproc.fillPoly(mRgba, pts, new Scalar(0, 255, 0));
+
         mCalibrate.StoreLocations(locations);
 
         return mRgba;
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mOrientation.startListening(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mOrientation.stopListening();
+    }
+
+    @Override
+    public void onOrientationChanged(float azimuth, float pitch, float roll) {
+        mAzimuth = azimuth;
+        Log.i(TAG, String.format("azimuth: %f pitch: %f roll: %f", azimuth, pitch, roll));
     }
 }
