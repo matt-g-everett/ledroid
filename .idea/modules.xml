@@ -2,9 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/ledroid.iml" filepath="$PROJECT_DIR$/ledroid.iml" />
-      <module fileurl="file://$PROJECT_DIR$/opencv/opencv.iml" filepath="$PROJECT_DIR$/opencv/opencv.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ledroid.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ledroid.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/opencv/ledroid.opencv.iml" filepath="$PROJECT_DIR$/.idea/modules/opencv/ledroid.opencv.iml" />
     </modules>
   </component>
 </project>
