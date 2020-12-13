@@ -1,6 +1,7 @@
 package com.matteverett.ledroid;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.util.Log;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
@@ -14,27 +15,50 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.opencv.core.Point;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 
 public final class Calibrate {
     private static final String TAG = "ledroid::Calibrate";
-
-    private static final String serverUri = "tcp://10.0.0.1:1883";
-    private static final String username = "user";
-    private static final String password = "password";
     private static final String clientId = "ledroid";
-    private static final String subscriptionTopic = "home/xmastree/cal/server";
-    private static final String publishTopic = "home/xmastree/cal/client";
+
+
+    private String serverUri = "";
+    private String username = "";
+    private String password = "";
+    private String subscriptionTopic = "";
+    private String publishTopic = "";
+    private int captureCount = 20;
 
     private MqttAndroidClient mqttAndroidClient;
-    private List<Point> mLocations;
+    private List<List<Point>> mLocations = null;
 
     Calibrate() {
         Log.i(TAG, "Calibrate created");
     }
 
     void Init(Context context) {
+        // Load settings from a resources file
+        Resources resources = context.getResources();
+        InputStream rawResource = resources.openRawResource(R.raw.config);
+        Properties properties = new Properties();
+        try {
+            properties.load(rawResource);
+
+            serverUri = properties.getProperty("mqttServerUrl");
+            username = properties.getProperty("mqttUserName");
+            password = properties.getProperty("mqttPassword");
+            subscriptionTopic = properties.getProperty("mqttCalServerTopic");
+            publishTopic = properties.getProperty("mqttCalClientTopic");
+            captureCount = Integer.parseInt(properties.getProperty("captureCount", "20"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         mqttAndroidClient = new MqttAndroidClient(context, serverUri, clientId);
         mqttAndroidClient.setCallback(new MqttCallbackExtended() {
             @Override
@@ -57,7 +81,9 @@ public final class Calibrate {
             @Override
             public void messageArrived(String topic, MqttMessage message) throws Exception {
                 Log.i(TAG, "Incoming message: " + new String(message.getPayload()));
-                SendLocations();
+
+                // Start capturing
+                mLocations = new ArrayList<>();
             }
 
             @Override
@@ -123,6 +149,7 @@ public final class Calibrate {
             message.setPayload("{\"type\":\"start\"}".getBytes());
             message.setQos(0);
             mqttAndroidClient.publish(publishTopic, message);
+            Log.i(TAG, String.format("Sent message: %s", message));
             if(!mqttAndroidClient.isConnected()){
                 Log.i(TAG, mqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
             }
@@ -133,15 +160,33 @@ public final class Calibrate {
     }
 
     void StoreLocations(List<Point> locations) {
-        mLocations = locations;
+        if (mLocations != null) {
+            mLocations.add(locations);
+            if (mLocations.size() == captureCount) {
+                SendLocations(mLocations);
+
+                // Stop capturing
+                mLocations = null;
+            }
+        }
     }
 
-    void SendLocations(){
+    void SendLocations(List<List<Point>> data){
         try {
             String payload = "{\"type\":\"data\",\"locations\":[";
-            for (int i = 0; i < mLocations.size(); i++) {
-                payload += String.format(Locale.ENGLISH, "%f,%f", mLocations.get(i).x, mLocations.get(i).y);
-                if (i < mLocations.size() - 1) {
+            for (int i = 0; i < data.size(); i++) {
+                payload += '[';
+
+                List<Point> locs = data.get(i);
+                for (int j = 0; j < locs.size(); j++) {
+                    payload += String.format(Locale.ENGLISH, "%f,%f", locs.get(j).x, locs.get(j).y);
+                    if (j < locs.size() - 1) {
+                        payload += ",";
+                    }
+                }
+
+                payload += ']';
+                if (i < data.size() - 1) {
                     payload += ",";
                 }
             }
@@ -152,6 +197,8 @@ public final class Calibrate {
             message.setQos(0);
 
             mqttAndroidClient.publish(publishTopic, message);
+            Log.i(TAG, String.format("Sent message: %s", message));
+
             if(!mqttAndroidClient.isConnected()){
                 Log.i(TAG, mqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
             }

@@ -182,6 +182,44 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * Converts from screen coordinates to simple x,y coordinates.
+     *
+     * In landscape
+     *   🡒 x
+     * 🡓
+     * y
+     *
+     * In portrait
+     * y 🡐
+     *     🡓
+     *     x
+     *
+     * Portrait transformed back (inverted y is helpful for polar coordinates)
+     *   🡒 x = mRgba.height() - y
+     * 🡓
+     * y = x
+     *
+     * @param screen Screen point.
+     * @param width Screen width.
+     * @param height Screen height.
+     * @return Point in simple coordinates.
+     */
+    private Point fromScreen(Point screen, int width, int height) {
+        return new Point(width - screen.y, screen.x);
+    }
+
+    /**
+     * Converts to screen coordinates from simple x,y coordinates.
+     * @param simple Point in simple coordinates.
+     * @param width Screen width.
+     * @param height Screen height.
+     * @return Point in simple coordinates.
+     */
+    private Point toScreen(Point simple, int width, int height) {
+        return new Point(simple.y, height - simple.x);
+    }
+
+    /**
      * This method is invoked when delivery of the frame needs to be done.
      * The returned values - is a modified frame which needs to be displayed on the screen.
      * TODO: pass the parameters specifying the format of the frame (BPP, YUV or RGB and etc)
@@ -191,6 +229,8 @@ public class MainActivity extends AppCompatActivity
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         mRgba = inputFrame.rgba();
+
+        Log.i(TAG, String.format("width: %d height: %d", mRgba.width(), mRgba.height()));
 
         Mat thresh = new Mat();
         Imgproc.cvtColor(mRgba, thresh, Imgproc.COLOR_BGR2GRAY);
@@ -216,6 +256,8 @@ public class MainActivity extends AppCompatActivity
         pts.add(new MatOfPoint(new Point(0, 0), new Point(50, 0), new Point(50, 50)));
         Imgproc.fillPoly(mRgba, pts, new Scalar(0, 255, 0));
 
+
+
         mCalibrate.StoreLocations(locations);
 
         return mRgba;
@@ -236,6 +278,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onOrientationChanged(float azimuth, float pitch, float roll) {
         mAzimuth = azimuth;
-        Log.i(TAG, String.format("azimuth: %f pitch: %f roll: %f", azimuth, pitch, roll));
+        //Log.i(TAG, String.format("azimuth: %f pitch: %f roll: %f", azimuth, pitch, roll));
     }
 }
