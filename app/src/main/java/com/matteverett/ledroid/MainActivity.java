@@ -200,22 +200,20 @@ public class MainActivity extends AppCompatActivity
      * y = x
      *
      * @param screen Screen point.
-     * @param width Screen width.
      * @param height Screen height.
      * @return Point in simple coordinates.
      */
-    private Point fromScreen(Point screen, int width, int height) {
-        return new Point(width - screen.y, screen.x);
+    private Point fromScreen(Point screen, int height) {
+        return new Point(height - screen.y, screen.x);
     }
 
     /**
      * Converts to screen coordinates from simple x,y coordinates.
      * @param simple Point in simple coordinates.
-     * @param width Screen width.
      * @param height Screen height.
      * @return Point in simple coordinates.
      */
-    private Point toScreen(Point simple, int width, int height) {
+    private Point toScreen(Point simple, int height) {
         return new Point(simple.y, height - simple.x);
     }
 
@@ -230,8 +228,6 @@ public class MainActivity extends AppCompatActivity
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         mRgba = inputFrame.rgba();
 
-        Log.i(TAG, String.format("width: %d height: %d", mRgba.width(), mRgba.height()));
-
         Mat thresh = new Mat();
         Imgproc.cvtColor(mRgba, thresh, Imgproc.COLOR_BGR2GRAY);
         Imgproc.threshold(thresh, thresh, 251, 255, Imgproc.THRESH_BINARY);
@@ -243,11 +239,12 @@ public class MainActivity extends AppCompatActivity
         Imgproc.findContours(thresh, contours, hierarchy, Imgproc.RETR_TREE,
                 Imgproc.CHAIN_APPROX_SIMPLE);
 
+        int screenWidth = mRgba.width();
         List<Point> locations = new ArrayList<>();
         for (int i = 0; i < contours.size(); i++) {
             Moments m = Imgproc.moments(contours.get(i));
             Point centroid = new Point(m.m10 / m.m00, m.m01 / m.m00);
-            locations.add(centroid);
+            locations.add(fromScreen(centroid, screenWidth));
             Imgproc.drawContours(mRgba, contours, i, new Scalar(255, 0, 255), 2);
             Imgproc.drawMarker(mRgba, centroid, new Scalar(0, 0, 255), Imgproc.MARKER_CROSS, 20, 3);
         }
@@ -255,8 +252,6 @@ public class MainActivity extends AppCompatActivity
         ArrayList<MatOfPoint> pts = new ArrayList<>();
         pts.add(new MatOfPoint(new Point(0, 0), new Point(50, 0), new Point(50, 50)));
         Imgproc.fillPoly(mRgba, pts, new Scalar(0, 255, 0));
-
-
 
         mCalibrate.StoreLocations(locations);
 
